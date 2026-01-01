@@ -68,6 +68,15 @@ pub fn toggle_fullscreen() {
     set_fullscreen(true);
 }
 
+// Change player directions
+fn update_player_dir(player: &mut Player, key_left: KeyCode, key_right: KeyCode) {
+    if is_key_pressed(key_left) {
+        player.dir = (player.dir + 1) % 4;
+    }
+    if is_key_pressed(key_right) {
+        player.dir = (player.dir + 3) % 4;
+    }
+}
 
 #[macroquad::main("lightCycles")]
 async fn main() {
@@ -89,41 +98,24 @@ async fn main() {
     let mut field = vec![vec![false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
     let mut trail_points: Vec<(i32, i32, Color)> = Vec::new();
 
+    // Initial clear background
+    clear_background(BLACK_COLOR);
+
     loop {
         // Input handling (direction changes and controls)
         use macroquad::input::KeyCode;
 
         // Player 1 LEFT/RIGHT (X/C)
-        if is_key_pressed(KeyCode::X) {
-            players[0].dir = (players[0].dir + 1) % 4;
-        }
-        if is_key_pressed(KeyCode::C) {
-            players[0].dir = (players[0].dir + 3) % 4;
-        }
+        update_player_dir(&mut players[0], KeyCode::X, KeyCode::C);
 
         // Player 2 LEFT/RIGHT (Left/Right arrows)
-        if is_key_pressed(KeyCode::Left) {
-            players[1].dir = (players[1].dir + 1) % 4;
-        }
-        if is_key_pressed(KeyCode::Right) {
-            players[1].dir = (players[1].dir + 3) % 4;
-        }
+        update_player_dir(&mut players[0], KeyCode::Left, KeyCode::Right);
 
         // Player 3 LEFT/RIGHT (A/Q)
-        if is_key_pressed(KeyCode::A) {
-            players[2].dir = (players[2].dir + 1) % 4;
-        }
-        if is_key_pressed(KeyCode::Q) {
-            players[2].dir = (players[2].dir + 3) % 4;
-        }
+        update_player_dir(&mut players[0], KeyCode::A, KeyCode::Q);
 
         // Player 4 LEFT/RIGHT (use top-row 6/9 keys as a substitute)
-        if is_key_pressed(KeyCode::Key6) {
-            players[3].dir = (players[3].dir + 1) % 4;
-        }
-        if is_key_pressed(KeyCode::Key9) {
-            players[3].dir = (players[3].dir + 3) % 4;
-        }
+        update_player_dir(&mut players[3], KeyCode::Key6, KeyCode::Key9);
 
         // Global controls
         if is_key_pressed(KeyCode::Escape) {
@@ -132,6 +124,7 @@ async fn main() {
         if is_key_pressed(KeyCode::R) {
             reset = true; // request reset
         }
+        if is_key_pressed(KeyCode::F11) { toggle_fullscreen() }
         if is_key_pressed(KeyCode::F1) { player_count = 1; }
         if is_key_pressed(KeyCode::F2) { player_count = 2; }
         if is_key_pressed(KeyCode::F3) { player_count = 3; }
@@ -139,6 +132,8 @@ async fn main() {
 
         // reset game when needed
         if reset {
+            // Drawing
+            clear_background(BLACK_COLOR);
             game = true;
             for col in field.iter_mut() { for cell in col.iter_mut() { *cell = false; } }
             trail_points.clear();
@@ -180,9 +175,6 @@ async fn main() {
             winner = (0..player_count).find(|&u| players[u].active);
             victory_displayed = true;
         }
-
-        // Drawing
-        clear_background(BLACK_COLOR);
 
         // Draw trails
         for &(x, y, color) in &trail_points {

@@ -17,7 +17,7 @@ pub const GREEN_COLOR: Color = GREEN;
 pub const YELLOW_COLOR: Color = YELLOW;
 
 
-// Struct for TRON Player
+// Struct for Lightcycle Player
 pub struct Player {
     pub x: i32,
     pub y: i32,
@@ -27,15 +27,15 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(color: Color) -> Self {
+    pub fn new(color: Color, screen_width : i32, screen_height : i32) -> Self {
         use macroquad::rand::gen_range;
-        let x = gen_range(0, SCREEN_WIDTH.max(1));
-        let y = gen_range(0, SCREEN_HEIGHT.max(1));
+        let x = gen_range(0, screen_width);
+        let y = gen_range(0, screen_height);
         let dir = gen_range(0, 4);
         Self { x, y, dir, active: true, color }
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, screen_width: i32, screen_height: i32) {
         // Move according to direction
         match self.dir {
             0 => self.y += 1,
@@ -46,26 +46,19 @@ impl Player {
         }
 
         // Wrap around screen bounds
-        if self.x >= SCREEN_WIDTH { self.x = 0; }
-        if self.x < 0 { self.x = SCREEN_WIDTH - 1; }
-        if self.y >= SCREEN_HEIGHT { self.y = 0; }
-        if self.y < 0 { self.y = SCREEN_HEIGHT - 1; }
+        if self.x >= screen_width { self.x = 0; }
+        if self.x < 0 { self.x = screen_width - 1; }
+        if self.y >= screen_height { self.y = 0; }
+        if self.y < 0 { self.y = screen_height - 1; }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, screen_width: i32, screen_height: i32) {
         use macroquad::rand::gen_range;
-        self.x = gen_range(0, SCREEN_WIDTH.max(1));
-        self.y = gen_range(0, SCREEN_HEIGHT.max(1));
+        self.x = gen_range(0, screen_width);
+        self.y = gen_range(0, screen_height);
         self.dir = gen_range(0, 4);
         self.active = true;
     }
-}
-
-// Toggle fullscreen helper analogous to the original ToggleFullscreen
-pub fn toggle_fullscreen() {
-    use macroquad::window::set_fullscreen;
-    // Minimal implementation: request fullscreen
-    set_fullscreen(true);
 }
 
 // Change player directions
@@ -78,14 +71,26 @@ fn update_player_dir(player: &mut Player, key_left: KeyCode, key_right: KeyCode)
     }
 }
 
-#[macroquad::main("lightCycles")]
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "lightCycles".to_owned(),
+        fullscreen: true,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(window_conf)]
 async fn main() {
     // Rust/macroquad implementation converted from the original C main
+
+    let screen_height = screen_height().round() as i32;
+    let screen_width = screen_width().round() as i32;
+
     let mut players = [
-        Player::new(RED_COLOR),
-        Player::new(GREEN_COLOR),
-        Player::new(BLUE_COLOR),
-        Player::new(YELLOW_COLOR),
+        Player::new(RED_COLOR, screen_width, screen_height),
+        Player::new(GREEN_COLOR, screen_width, screen_height),
+        Player::new(BLUE_COLOR, screen_width, screen_height),
+        Player::new(YELLOW_COLOR, screen_width, screen_height),
     ];
 
     let mut player_count: usize = 4;
@@ -95,7 +100,7 @@ async fn main() {
     let mut winner: Option<usize> = None;
 
     // Occupied cells and a list of points to redraw trails
-    let mut field = vec![vec![false; SCREEN_HEIGHT as usize]; SCREEN_WIDTH as usize];
+    let mut field = vec![vec![false; screen_height as usize]; screen_width as usize];
     let mut trail_points: Vec<(i32, i32, Color)> = Vec::new();
 
     // Initial clear background
@@ -124,7 +129,6 @@ async fn main() {
         if is_key_pressed(KeyCode::R) {
             reset = true; // request reset
         }
-        if is_key_pressed(KeyCode::F11) { toggle_fullscreen() }
         if is_key_pressed(KeyCode::F1) { player_count = 1; }
         if is_key_pressed(KeyCode::F2) { player_count = 2; }
         if is_key_pressed(KeyCode::F3) { player_count = 3; }
@@ -137,7 +141,7 @@ async fn main() {
             game = true;
             for col in field.iter_mut() { for cell in col.iter_mut() { *cell = false; } }
             trail_points.clear();
-            for p in 0..MAX_PLAYER { players[p].reset(); }
+            for p in 0..MAX_PLAYER { players[p].reset(screen_width, screen_height); }
             victory_displayed = false;
             winner = None;
             reset = false;
@@ -147,7 +151,7 @@ async fn main() {
         if game {
             for _ in 0..SPEED {
                 for u in 0..player_count {
-                    if players[u].active { players[u].tick(); }
+                    if players[u].active { players[u].tick(screen_width, screen_height); }
                 }
 
                 let mut alive_players = 0usize;
@@ -198,8 +202,8 @@ async fn main() {
             let text_dim = measure_text(&msg, None, text_size as u16, 1.0);
             draw_text(
                 &msg,
-                (SCREEN_WIDTH as f32 - text_dim.width) / 2.0,
-                (SCREEN_HEIGHT as f32 - text_dim.height) / 2.0,
+                (screen_width as f32 - text_dim.width) / 2.0,
+                (screen_height as f32 - text_dim.height) / 2.0,
                 text_size,
                 WHITE_COLOR,
             );

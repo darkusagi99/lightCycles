@@ -17,6 +17,41 @@ pub const GREEN_COLOR: Color = GREEN;
 pub const YELLOW_COLOR: Color = YELLOW;
 
 
+// Glow configuration
+// These parameters control the neon effect drawn around trails and players.
+// Increase GLOW_LAYERS or GLOW_SPREAD for a stronger/larger glow at the cost of performance.
+const GLOW_LAYERS: i32 = 4;         // number of expanding layers for the glow
+const GLOW_SPREAD: i32 = 2;         // how many pixels the glow expands per layer
+const GLOW_DIVIDER: f32 = 50.0;  // starting alpha for the outermost glow layer
+const MAX_ALPHA: f32 = 1.0;        // alpha for the core (original) rectangle
+
+fn with_alpha(mut c: Color, a: f32) -> Color {
+    c.a = (a).clamp(0.0, 1.0);
+    c
+}
+
+// Draw a small neon-like square with a glow effect
+fn draw_neon_square(x: i32, y: i32, size: i32, color: Color) {
+
+    // Core square
+    draw_rectangle(x as f32, y as f32, size as f32, size as f32, color);
+
+    // Draw glow layers
+    // Each rectangle expends and has less and less alpha
+    for layer in (1..=GLOW_LAYERS).rev() {
+        let expand = layer * GLOW_SPREAD;
+        let alpha = MAX_ALPHA / ((layer as f32) * GLOW_DIVIDER);
+        let glow_color = with_alpha(color, alpha);
+        draw_rectangle(
+            (x - expand) as f32,
+            (y - expand) as f32,
+            (size + expand * 2) as f32,
+            (size + expand * 2) as f32,
+            glow_color,
+        );
+    }
+}
+
 // Struct for Lightcycle Player
 pub struct Player {
     pub x: i32,
@@ -180,15 +215,16 @@ async fn main() {
             victory_displayed = true;
         }
 
-        // Draw trails
+        // Draw trails with neon glow
         for &(x, y, color) in &trail_points {
-            draw_rectangle(x as f32, y as f32, PLAYER_WIDTH as f32, PLAYER_WIDTH as f32, color);
+            draw_neon_square(x, y, PLAYER_WIDTH, color);
         }
 
-        // Draw current player positions on top
+        // Draw current player positions on top (stronger glow by drawing once more)
         for u in 0..player_count {
             if players[u].active {
-                draw_rectangle(players[u].x as f32, players[u].y as f32, PLAYER_WIDTH as f32, PLAYER_WIDTH as f32, players[u].color);
+                // Slightly emphasize current position by a second pass with a smaller spread
+                draw_neon_square(players[u].x, players[u].y, PLAYER_WIDTH, players[u].color);
             }
         }
 
